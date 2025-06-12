@@ -22,6 +22,7 @@ type ProfileType =
  * @property {number} [endJerk] - The final jerk (for jerk-limited/polynomial).
  * @property {ProfileType} profileType - The type of motion profile.
  * @property {number[]} [polynomialCoefficients] - Coefficients for polynomial profile.
+ * @property {number} [maxVelocity] - The maximum velocity allowed during the profile (for trapezoidal/triangular).
  */
 interface MotionProfileOptions {
     startTime: number;
@@ -35,6 +36,10 @@ interface MotionProfileOptions {
     endJerk?: number;
     profileType: ProfileType;
     polynomialCoefficients?: number[];
+    /**
+     * The maximum velocity allowed during the profile (for trapezoidal/triangular).
+     */
+    maxVelocity?: number;
 }
 
 /**
@@ -54,6 +59,7 @@ export class MotionProfile {
     private readonly type: ProfileType; // Profile type
     private readonly coeffs?: number[]; // Polynomial coefficients
     private jerkCoeffs?: number[];      // Jerk-limited coefficients
+    private readonly maxVelocity?: number; // Maximum velocity for trapezoidal/triangular
 
     /**
      * Validate the options for constructing a MotionProfile.
@@ -111,6 +117,12 @@ export class MotionProfile {
                 }
                 break;
         }
+
+        if (opts.profileType === 'trapezoidal') {
+            if (opts.maxVelocity === undefined) {
+                throw new Error('maxVelocity must be provided for trapezoidal profiles');
+            }
+        }
     }
 
     /**
@@ -139,6 +151,7 @@ export class MotionProfile {
         this.j0 = opts.startJerk ?? 0;
         this.jf = opts.endJerk ?? 0;
         this.coeffs = opts.polynomialCoefficients;
+        this.maxVelocity = opts.maxVelocity;
         if (this.type === 'jerk-limited') {
             this.jerkCoeffs = this.calcJerkLimitedCoeffs();
         }
@@ -375,20 +388,48 @@ export class MotionProfile {
 
     /**
      * Calculate parameters for a trapezoidal profile.
+     * Uses maxVelocity to determine if a cruise phase is needed.
+     * If the required peak velocity exceeds maxVelocity, use a cruise phase at maxVelocity; otherwise, use a triangular profile.
      * @private
      * @returns {{vMax: number, t1: number, t2: number, t3: number, a1: number, a3: number}} The cruise velocity, phase times, and accelerations.
      */
     private trapezoidalParams() {
-        // Basic: accelerate to vMax, cruise, decelerate to vf.
         const T = this.t1 - this.t0;
         const v0 = this.v0, vf = this.vf, d = this.d;
-        let vMax = Math.max(v0, vf, d / T);
-        let t1 = (vMax - v0) / ((vMax - v0) / (T/2));
-        let t3 = (vMax - vf) / ((vMax - vf) / (T/2));
-        let t2 = T - t1 - t3;
-        let a1 = (vMax - v0) / t1;
-        let a3 = (vf - vMax) / t3;
-        return { vMax, t1, t2, t3, a1, a3 };
+        const vMax = this.maxVelocity;
+        if (vMax === undefined) {
+            throw new Error('maxVelocity must be provided for trapezoidal profiles');
+        }
+        // First, compute the minimum time needed to reach vMax from v0 and decelerate to vf
+        const t1 = (vMax - v0) / ((vMax - v0) === 0 ? 1 : (vMax - v0) / (T/2)); // avoid div by zero
+        const t3 = (vMax - vf) / ((vMax - vf) === 0 ? 1 : (vMax - vf) / (T/2));
+        // Compute the distance covered during accel and decel
+        const d1 = (v0 + vMax) * t1 / 2;
+        const d3 = (vf + vMax) * t3 / 2;
+        // Compute the remaining distance for cruise
+        const d2 = d - d1 - d3;
+        let t2 = d2 / vMax;
+        // If t2 < 0, we can't reach vMax, so use a triangular profile
+        if (t2 < 0) {
+            // Triangular profile: peak velocity is less than vMax, no cruise
+            // Solve for peak velocity vPeak such that area under velocity curve matches d
+            // vPeak = sqrt((d*(a1 + a3) + (a3*v0^2 + a1*vf^2)/(2*a1*a3)) / ((1/a1) + (1/a3)))
+            // For symmetric case (v0 = vf = 0): vPeak = sqrt(a * d)
+            // But let's solve for a such that d = (T/2)*(v0 + vPeak) + (T/2)*(vPeak + vf)/2
+            // For v0 = vf = 0: d = 0.5 * vPeak * T => vPeak = 2d / T
+            const vPeak = (2 * d) / T;
+            const t1_tri = T / 2;
+            const t3_tri = T / 2;
+            const t2_tri = 0;
+            const a1_tri = (vPeak - v0) / t1_tri;
+            const a3_tri = (vf - vPeak) / t3_tri;
+            return { vMax: vPeak, t1: t1_tri, t2: t2_tri, t3: t3_tri, a1: a1_tri, a3: a3_tri };
+        } else {
+            // Trapezoidal profile with cruise
+            const a1 = (vMax - v0) / t1;
+            const a3 = (vf - vMax) / t3;
+            return { vMax, t1, t2, t3, a1, a3 };
+        }
     }
 
     /**
