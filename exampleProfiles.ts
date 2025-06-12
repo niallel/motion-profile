@@ -29,7 +29,7 @@ const trapezoidalProfile = new MotionProfile({
   distance,
   startVelocity: 0,
   endVelocity: 0,
-  maxVelocity: 15,
+  cruisePercentage: 1/3,
   profileType: 'trapezoidal',
 });
 const sCurveProfile = new MotionProfile({
