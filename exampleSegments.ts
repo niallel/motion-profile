@@ -1,4 +1,4 @@
-import { MotionProfile } from './MotionProfile';
+import { MotionSegment } from './MotionSegment';
 import { plot } from 'nodeplotlib';
 
 const startTime = 0;
@@ -7,7 +7,7 @@ const distance = 100;
 const steps = 100;
 
 // Profiles
-const constantProfile = new MotionProfile({
+const constantProfile = new MotionSegment({
   startTime,
   endTime,
   distance,
@@ -15,7 +15,7 @@ const constantProfile = new MotionProfile({
   profileType: 'constant',
 });
 
-const triangularProfile = new MotionProfile({
+const triangularProfile = new MotionSegment({
   startTime,
   endTime,
   distance,
@@ -24,7 +24,7 @@ const triangularProfile = new MotionProfile({
   profileType: 'triangular',
 });
 
-const trapezoidalProfile = new MotionProfile({
+const trapezoidalProfile = new MotionSegment({
   startTime,
   endTime,
   distance,
@@ -34,7 +34,7 @@ const trapezoidalProfile = new MotionProfile({
   profileType: 'trapezoidal',
 });
 
-const sCurveProfile = new MotionProfile({
+const sCurveProfile = new MotionSegment({
   startTime,
   endTime,
   distance,
@@ -43,7 +43,7 @@ const sCurveProfile = new MotionProfile({
   profileType: 's-curve',
 });
 
-const polynomialProfile = new MotionProfile({
+const polynomialProfile = new MotionSegment({
   startTime,
   endTime,
   distance, 
@@ -54,7 +54,7 @@ const polynomialProfile = new MotionProfile({
   profileType: 'polynomial',
 });
 
-const jerkLimitedProfile = new MotionProfile({
+const jerkLimitedProfile = new MotionSegment({
   startTime,
   endTime,
   distance,
@@ -68,7 +68,7 @@ const jerkLimitedProfile = new MotionProfile({
 });
 
 // Helper to sample a property
-function sampleProfile(profile: MotionProfile, fn: (t: number) => number): number[][] {
+function sampleProfile(profile: MotionSegment, fn: (t: number) => number): number[][] {
   const tArr: number[] = [];
   const yArr: number[] = [];
   for (let i = 0; i <= steps; i++) {
@@ -80,7 +80,7 @@ function sampleProfile(profile: MotionProfile, fn: (t: number) => number): numbe
 }
 
 // Plot all four properties for a single profile
-function plotProfileAllCurves(profile: MotionProfile, label: string) {
+function plotProfileAllCurves(profile: MotionSegment, label: string) {
   const [tDist, distArr] = sampleProfile(profile, t => profile.position(t));
   const [tVel, velArr] = sampleProfile(profile, t => profile.velocity(t));
   const [tAcc, accArr] = sampleProfile(profile, t => profile.acceleration(t));

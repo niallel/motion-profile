@@ -10,7 +10,7 @@ type ProfileType =
     | 'jerk-limited'; // 7th-order jerk-limited S-curve
 
 /**
- * Options for constructing a MotionProfile.
+ * Options for constructing a MotionSegment.
  * @property {number} startTime - The start time of the profile.
  * @property {number} endTime - The end time of the profile.
  * @property {number} distance - The total distance to travel.
@@ -24,7 +24,7 @@ type ProfileType =
  * @property {number[]} [polynomialCoefficients] - Coefficients for polynomial profile.
  * @property {number} [cruisePercentage] - The percentage (0-1) of the total time to spend in the cruise phase (for trapezoidal).
  */
-interface MotionProfileOptions {
+interface MotionSegmentOptions {
     startTime: number;
     endTime: number;
     distance: number;
@@ -43,10 +43,10 @@ interface MotionProfileOptions {
 }
 
 /**
- * MotionProfile generates position, velocity, acceleration, and jerk profiles
+ * MotionSegment generates position, velocity, acceleration, and jerk profiles
  * for a variety of motion types (constant, triangular, trapezoidal, s-curve, polynomial, jerk-limited).
  */
-export class MotionProfile {
+export class MotionSegment {
     private readonly t0: number; // Start time
     private readonly t1: number; // End time
     private readonly d: number;  // Distance
@@ -62,12 +62,12 @@ export class MotionProfile {
     private readonly cruisePercentage?: number; // Fraction of time for cruise phase
 
     /**
-     * Validate the options for constructing a MotionProfile.
+     * Validate the options for constructing a MotionSegment.
      * Throws an error if any parameter is invalid.
      * @private
-     * @param {MotionProfileOptions} opts - The options to validate.
+     * @param {MotionSegmentOptions} opts - The options to validate.
      */
-    private validateOptions(opts: MotionProfileOptions): void {
+    private validateOptions(opts: MotionSegmentOptions): void {
         // Check required fields
         if (typeof opts.startTime !== 'number' || typeof opts.endTime !== 'number') {
             throw new Error('startTime and endTime must be numbers');
@@ -121,10 +121,10 @@ export class MotionProfile {
     }
 
     /**
-     * Construct a new MotionProfile.
-     * @param {MotionProfileOptions} opts - The options for the profile.
+     * Construct a new MotionSegment.
+     * @param {MotionSegmentOptions} opts - The options for the profile.
      */
-    constructor(opts: MotionProfileOptions) {
+    constructor(opts: MotionSegmentOptions) {
         this.validateOptions(opts);
         this.t0 = opts.startTime;
         this.t1 = opts.endTime;
@@ -802,4 +802,4 @@ function solveLinearSystem(M: number[][], b: number[]): number[] {
     return A.map(row => row[n]);
 }
 
-export default MotionProfile;
+export default MotionSegment;

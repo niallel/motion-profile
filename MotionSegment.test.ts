@@ -1,18 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { MotionProfile } from './MotionProfile';
+import { MotionSegment } from './MotionSegment';
 
 function closeTo(a: number, b: number, tol = 1e-6) {
   return Math.abs(a - b) < tol;
 }
 
-describe('MotionProfile', () => {
+describe('MotionSegment', () => {
   const startTime = 0;
   const endTime = 10;
   const distance = 100;
 
   describe('constant profile', () => {
     it('computes correct position, velocity, acceleration', () => {
-      const profile = new MotionProfile({
+      const profile = new MotionSegment({
         startTime,
         endTime,
         distance,
@@ -28,7 +28,7 @@ describe('MotionProfile', () => {
       expect(closeTo(profile.jerk(0), 0)).toBe(true);
     });
     it('throws if endVelocity is provided', () => {
-      expect(() => new MotionProfile({
+      expect(() => new MotionSegment({
         startTime,
         endTime,
         distance,
@@ -41,7 +41,7 @@ describe('MotionProfile', () => {
 
   describe('triangular profile', () => {
     it('computes correct position, velocity, acceleration', () => {
-      const profile = new MotionProfile({
+      const profile = new MotionSegment({
         startTime,
         endTime,
         distance,
@@ -62,7 +62,7 @@ describe('MotionProfile', () => {
 
   describe('trapezoidal profile', () => {
     it('computes correct position, velocity, acceleration, cruisePercentage', () => {
-      const profile = new MotionProfile({
+      const profile = new MotionSegment({
         startTime,
         endTime,
         distance,
@@ -83,7 +83,7 @@ describe('MotionProfile', () => {
       expect(closeTo(profile.velocity(10), 0)).toBe(true);
     });
     it('throws if cruisePercentage is out of bounds', () => {
-      expect(() => new MotionProfile({
+      expect(() => new MotionSegment({
         startTime,
         endTime,
         distance,
@@ -92,7 +92,7 @@ describe('MotionProfile', () => {
         profileType: 'trapezoidal',
         cruisePercentage: -0.1,
       })).toThrow();
-      expect(() => new MotionProfile({
+      expect(() => new MotionSegment({
         startTime,
         endTime,
         distance,
@@ -106,7 +106,7 @@ describe('MotionProfile', () => {
 
   describe('s-curve profile', () => {
     it('computes position, velocity, acceleration, jerk', () => {
-      const profile = new MotionProfile({
+      const profile = new MotionSegment({
         startTime,
         endTime,
         distance,
@@ -125,7 +125,7 @@ describe('MotionProfile', () => {
 
   describe('polynomial profile', () => {
     it('computes position, velocity, acceleration, jerk', () => {
-      const profile = new MotionProfile({
+      const profile = new MotionSegment({
         startTime,
         endTime,
         distance: 100,
@@ -147,7 +147,7 @@ describe('MotionProfile', () => {
 
   describe('jerk-limited profile', () => {
     it('computes position, velocity, acceleration, jerk', () => {
-      const profile = new MotionProfile({
+      const profile = new MotionSegment({
         startTime,
         endTime,
         distance,
@@ -166,7 +166,7 @@ describe('MotionProfile', () => {
       expect(typeof profile.jerk(5)).toBe('number');
     });
     it('throws if required parameters are missing', () => {
-      expect(() => new MotionProfile({
+      expect(() => new MotionSegment({
         startTime,
         endTime,
         distance,
@@ -179,14 +179,14 @@ describe('MotionProfile', () => {
 
   describe('validation and edge cases', () => {
     it('throws for negative distance or velocity', () => {
-      expect(() => new MotionProfile({
+      expect(() => new MotionSegment({
         startTime,
         endTime,
         distance: -1,
         startVelocity: 0,
         profileType: 'constant',
       })).toThrow();
-      expect(() => new MotionProfile({
+      expect(() => new MotionSegment({
         startTime,
         endTime,
         distance,
@@ -195,7 +195,7 @@ describe('MotionProfile', () => {
       })).toThrow();
     });
     it('throws for invalid time interval', () => {
-      expect(() => new MotionProfile({
+      expect(() => new MotionSegment({
         startTime: 10,
         endTime: 0,
         distance,
@@ -205,7 +205,7 @@ describe('MotionProfile', () => {
     });
     it('throws for missing profileType', () => {
       // @ts-expect-error
-      expect(() => new MotionProfile({
+      expect(() => new MotionSegment({
         startTime,
         endTime,
         distance,
