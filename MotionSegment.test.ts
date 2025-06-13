@@ -52,10 +52,9 @@ describe('MotionSegment', () => {
       expect(closeTo(segment.position(0), 0)).toBe(true);
       expect(closeTo(segment.position(10), 100)).toBe(true);
       expect(closeTo(segment.velocity(0), 0)).toBe(true);
-      expect(closeTo(segment.velocity(5), 10)).toBe(true);
+      expect(closeTo(segment.velocity(5), 20)).toBe(true);
       expect(closeTo(segment.velocity(10), 0)).toBe(true);
-      expect(closeTo(segment.acceleration(0), 2)).toBe(true);
-      expect(closeTo(segment.acceleration(5), -2)).toBe(true);
+      expect(closeTo(segment.acceleration(0), 4)).toBe(true);
       expect(closeTo(segment.jerk(0), 0)).toBe(true);
     });
   });
@@ -119,7 +118,7 @@ describe('MotionSegment', () => {
       expect(closeTo(segment.velocity(0), 0)).toBe(true);
       expect(closeTo(segment.velocity(10), 0)).toBe(true);
       expect(closeTo(segment.acceleration(0), 6 * distance / 100)).toBe(true); // 6d/T^2
-      expect(closeTo(segment.jerk(0), -0.12)).toBe(true); // -12d/T^3
+      expect(closeTo(segment.jerk(0), -1.2)).toBe(true); // -12d/T^3
     });
   });
 
@@ -131,13 +130,15 @@ describe('MotionSegment', () => {
         distance: 100,
         startVelocity: 0,
         endVelocity: 0,
+        startAccel: 0,
+        endAccel: 0,
         segmentType: 'polynomial',
       });
       expect(closeTo(segment.position(0), 0)).toBe(true);
       expect(closeTo(segment.position(10), 100)).toBe(true);
       expect(closeTo(segment.velocity(10), 0)).toBe(true);
-      expect(closeTo(segment.acceleration(10), 0)).toBe(true);
-      expect(closeTo(segment.jerk(10), 0)).toBe(true);
+      expect(closeTo(segment.acceleration(10), 0, 1e-12)).toBe(true);
+      expect(closeTo(segment.jerk(10), 6, 1e-12)).toBe(true);
     });
     it('throws if coefficients are missing', () => {
       // This test is no longer needed, as coefficients are always auto-generated
