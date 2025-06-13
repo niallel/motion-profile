@@ -4,9 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "example": "npx tsx exampleSegments.ts",
   },
-  "author": "",
+  "author": "Niall El-Assaad",
   "license": "ISC",
   "devDependencies": {
     "nodeplotlib": "^1.1.2",
