@@ -155,21 +155,33 @@ describe('MotionSegment', () => {
   });
 
   describe('validation and edge cases', () => {
-    it('throws for negative distance or velocity', () => {
-      expect(() => new MotionSegment({
-        startTime,
-        endTime,
-        distance: -1,
-        startVelocity: 0,
-        segmentType: 'constant',
-      })).toThrow();
+    it('allows negative startAccel and endAccel for jerk-limited', () => {
       expect(() => new MotionSegment({
         startTime,
         endTime,
         distance,
-        startVelocity: -1,
-        segmentType: 'constant',
-      })).toThrow();
+        startVelocity: 0,
+        endVelocity: 0,
+        startAccel: -2,
+        endAccel: -3,
+        startJerk: 0,
+        endJerk: 0,
+        segmentType: 'jerk-limited',
+      })).not.toThrow();
+    });
+    it('allows negative startJerk and endJerk for jerk-limited', () => {
+      expect(() => new MotionSegment({
+        startTime,
+        endTime,
+        distance,
+        startVelocity: 0,
+        endVelocity: 0,
+        startAccel: 0,
+        endAccel: 0,
+        startJerk: -1,
+        endJerk: -2,
+        segmentType: 'jerk-limited',
+      })).not.toThrow();
     });
     it('throws for invalid time interval', () => {
       expect(() => new MotionSegment({
@@ -223,17 +235,8 @@ describe('MotionSegment', () => {
     it('throws if startTime >= endTime', () => {
       expect(() => new MotionSegment({ ...base, startTime: 10, endTime: 10 })).toThrow('startTime must be less than endTime');
     });
-    it('throws if distance < 0', () => {
-      expect(() => new MotionSegment({ ...base, distance: -1 })).toThrow('distance must be non-negative');
-    });
-    it('throws if startVelocity < 0', () => {
-      expect(() => new MotionSegment({ ...base, startVelocity: -1 })).toThrow('startVelocity must be non-negative');
-    });
     it('throws if endVelocity is provided for constant', () => {
       expect(() => new MotionSegment({ ...base, endVelocity: 0 })).toThrow('endVelocity should not be provided for constant segment');
-    });
-    it('throws if endVelocity < 0 for non-constant', () => {
-      expect(() => new MotionSegment({ ...base, segmentType: 'triangular', endVelocity: -1 })).toThrow('endVelocity must be non-negative');
     });
     it('throws if cruisePercentage is out of bounds for trapezoidal', () => {
       expect(() => new MotionSegment({ ...base, segmentType: 'trapezoidal', cruisePercentage: -0.1 })).toThrow('cruisePercentage must be between 0 and 1 for trapezoidal segments');
@@ -257,9 +260,6 @@ describe('MotionSegment', () => {
     it('throws if endVelocity is missing for triangular', () => {
       expect(() => new MotionSegment({ ...base, endVelocity: undefined })).toThrow('endVelocity must be a number for triangular segment');
     });
-    it('throws if endVelocity is negative for triangular', () => {
-      expect(() => new MotionSegment({ ...base, endVelocity: -1 })).toThrow('endVelocity must be non-negative');
-    });
     it('throws if distance is too short for triangular', () => {
       expect(() => new MotionSegment({ ...base, distance: 1e-8 })).toThrow();
     });
@@ -272,11 +272,6 @@ describe('MotionSegment', () => {
     it('throws if cruisePercentage is exactly 0 or 1 for trapezoidal', () => {
       expect(() => new MotionSegment({ ...base, segmentType: 'trapezoidal', cruisePercentage: 0 })).toThrow();
       expect(() => new MotionSegment({ ...base, segmentType: 'trapezoidal', cruisePercentage: 1 })).toThrow();
-    });
-    it('throws if jerk-limited has negative or missing jerk/accel', () => {
-      expect(() => new MotionSegment({ ...base, segmentType: 'jerk-limited', startAccel: -1, endAccel: 0, startJerk: 0, endJerk: 0 })).toThrow();
-      expect(() => new MotionSegment({ ...base, segmentType: 'jerk-limited', startAccel: 0, endAccel: 0, startJerk: -1, endJerk: 0 })).toThrow();
-      expect(() => new MotionSegment({ ...base, segmentType: 'jerk-limited', startAccel: 0, endAccel: 0, startJerk: 0, endJerk: -1 })).toThrow();
     });
     it('throws if duration is zero', () => {
       expect(() => new MotionSegment({ ...base, endTime: 0 })).toThrow('startTime must be less than endTime');
