@@ -12,9 +12,9 @@ const constantProfile = new MotionProfile({
   endTime,
   distance,
   startVelocity: 0,
-//   endVelocity: 10,
   profileType: 'constant',
 });
+
 const triangularProfile = new MotionProfile({
   startTime,
   endTime,
@@ -23,6 +23,7 @@ const triangularProfile = new MotionProfile({
   endVelocity: 0,
   profileType: 'triangular',
 });
+
 const trapezoidalProfile = new MotionProfile({
   startTime,
   endTime,
@@ -32,6 +33,7 @@ const trapezoidalProfile = new MotionProfile({
   cruisePercentage: 1/3,
   profileType: 'trapezoidal',
 });
+
 const sCurveProfile = new MotionProfile({
   startTime,
   endTime,
@@ -40,6 +42,7 @@ const sCurveProfile = new MotionProfile({
   endVelocity: 0,
   profileType: 's-curve',
 });
+
 const polynomialProfile = new MotionProfile({
   startTime,
   endTime,
@@ -48,6 +51,7 @@ const polynomialProfile = new MotionProfile({
   profileType: 'polynomial',
   polynomialCoefficients: [0, 0, 0, distance / Math.pow(endTime, 3)], // s(t) = (distance/t^3) * t^3
 });
+
 const jerkLimitedProfile = new MotionProfile({
   startTime,
   endTime,
