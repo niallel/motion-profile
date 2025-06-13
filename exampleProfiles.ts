@@ -46,10 +46,10 @@ const sCurveProfile = new MotionProfile({
 const polynomialProfile = new MotionProfile({
   startTime,
   endTime,
-  distance: 0, // not used
+  distance, 
   startVelocity: 0,
+  endVelocity: 0,
   profileType: 'polynomial',
-  polynomialCoefficients: [0, 0, 0, distance / Math.pow(endTime, 3)], // s(t) = (distance/t^3) * t^3
 });
 
 const jerkLimitedProfile = new MotionProfile({

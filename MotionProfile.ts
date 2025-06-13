@@ -35,7 +35,6 @@ interface MotionProfileOptions {
     startJerk?: number;
     endJerk?: number;
     profileType: ProfileType;
-    polynomialCoefficients?: number[];
     /**
      * The percentage (0-1) of the total time to spend in the cruise phase (for trapezoidal).
      * If provided, automatically solves for the required cruise velocity.
@@ -58,7 +57,7 @@ export class MotionProfile {
     private readonly j0: number; // Start jerk
     private readonly jf: number; // End jerk
     private readonly type: ProfileType; // Profile type
-    private readonly coeffs?: number[]; // Polynomial coefficients
+    private readonly coeffs?: number[]; // Polynomial coefficients (now always auto-calculated)
     private jerkCoeffs?: number[];      // Jerk-limited coefficients
     private readonly cruisePercentage?: number; // Fraction of time for cruise phase
 
@@ -104,11 +103,6 @@ export class MotionProfile {
 
         // Profile-specific requirements
         switch (opts.profileType) {
-            case 'polynomial':
-                if (!opts.polynomialCoefficients || opts.polynomialCoefficients.length === 0) {
-                    throw new Error('polynomialCoefficients are required for polynomial profile');
-                }
-                break;
             case 'jerk-limited':
                 if (opts.startAccel === undefined || opts.endAccel === undefined) {
                     throw new Error('startAccel and endAccel are required for jerk-limited profile');
@@ -151,8 +145,44 @@ export class MotionProfile {
         }
         this.j0 = opts.startJerk ?? 0;
         this.jf = opts.endJerk ?? 0;
-        this.coeffs = opts.polynomialCoefficients;
         this.cruisePercentage = opts.cruisePercentage;
+        if (this.type === 'polynomial') {
+            // Automatically calculate coefficients for cubic or quintic polynomial
+            const T = this.t1 - this.t0;
+            const s0 = 0;
+            const s1 = this.d;
+            const v0 = this.v0;
+            const v1 = this.vf;
+            const a0 = opts.startAccel;
+            const a1 = opts.endAccel;
+            if (a0 !== undefined && a1 !== undefined) {
+                // Quintic: match position, velocity, acceleration at endpoints
+                // s(t) = a0 + a1*t + a2*t^2 + a3*t^3 + a4*t^4 + a5*t^5
+                // 6 equations for 6 unknowns
+                const M = [
+                    [1, 0, 0, 0, 0, 0], // s(0)
+                    [0, 1, 0, 0, 0, 0], // s'(0)
+                    [0, 0, 2, 0, 0, 0], // s''(0)
+                    [1, T, T**2, T**3, T**4, T**5], // s(T)
+                    [0, 1, 2*T, 3*T**2, 4*T**3, 5*T**4], // s'(T)
+                    [0, 0, 2, 6*T, 12*T**2, 20*T**3], // s''(T)
+                ];
+                const b = [s0, v0, a0, s1, v1, a1];
+                this.coeffs = solveLinearSystem(M, b);
+            } else {
+                // Cubic: match position, velocity at endpoints
+                // s(t) = a0 + a1*t + a2*t^2 + a3*t^3
+                // 4 equations for 4 unknowns
+                const M = [
+                    [1, 0, 0, 0], // s(0)
+                    [0, 1, 0, 0], // s'(0)
+                    [1, T, T**2, T**3], // s(T)
+                    [0, 1, 2*T, 3*T**2], // s'(T)
+                ];
+                const b = [s0, v0, s1, v1];
+                this.coeffs = solveLinearSystem(M, b);
+            }
+        }
         if (this.type === 'jerk-limited') {
             this.jerkCoeffs = this.calcJerkLimitedCoeffs();
         }
