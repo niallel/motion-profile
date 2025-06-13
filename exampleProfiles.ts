@@ -49,6 +49,8 @@ const polynomialProfile = new MotionProfile({
   distance, 
   startVelocity: 0,
   endVelocity: 0,
+  startAccel: 0, // include for 5th degree polynomial (quintic), otherwise its a 3rd degree polynomial (cubic)
+  endAccel: 0, // include for 5th degree polynomial (quintic), otherwise its a 3rd degree polynomial (cubic)
   profileType: 'polynomial',
 });
 
