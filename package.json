@@ -8,10 +8,8 @@
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "nodeplotlib": "^1.1.2"
-  },
   "devDependencies": {
+    "nodeplotlib": "^1.1.2",
     "tsx": "^4.20.2",
     "vitest": "^3.2.3"
   }
