@@ -6,44 +6,44 @@ const endTime = 10;
 const distance = 100;
 const steps = 100;
 
-// Profiles
-const constantProfile = new MotionSegment({
+// Segments
+const constantSegment = new MotionSegment({
   startTime,
   endTime,
   distance,
   startVelocity: 0,
-  profileType: 'constant',
+  segmentType: 'constant',
 });
 
-const triangularProfile = new MotionSegment({
+const triangularSegment = new MotionSegment({
   startTime,
   endTime,
   distance,
   startVelocity: 0,
   endVelocity: 0,
-  profileType: 'triangular',
+  segmentType: 'triangular',
 });
 
-const trapezoidalProfile = new MotionSegment({
+const trapezoidalSegment = new MotionSegment({
   startTime,
   endTime,
   distance,
   startVelocity: 0,
   endVelocity: 0,
   cruisePercentage: 1/3,
-  profileType: 'trapezoidal',
+  segmentType: 'trapezoidal',
 });
 
-const sCurveProfile = new MotionSegment({
+const sCurveSegment = new MotionSegment({
   startTime,
   endTime,
   distance,
   startVelocity: 0,
   endVelocity: 0,
-  profileType: 's-curve',
+  segmentType: 's-curve',
 });
 
-const polynomialProfile = new MotionSegment({
+const polynomialSegment = new MotionSegment({
   startTime,
   endTime,
   distance, 
@@ -51,10 +51,10 @@ const polynomialProfile = new MotionSegment({
   endVelocity: 0,
   startAccel: 0, // include for 5th degree polynomial (quintic), otherwise its a 3rd degree polynomial (cubic)
   endAccel: 0, // include for 5th degree polynomial (quintic), otherwise its a 3rd degree polynomial (cubic)
-  profileType: 'polynomial',
+  segmentType: 'polynomial',
 });
 
-const jerkLimitedProfile = new MotionSegment({
+const jerkLimitedSegment = new MotionSegment({
   startTime,
   endTime,
   distance,
@@ -64,11 +64,11 @@ const jerkLimitedProfile = new MotionSegment({
   endAccel: 0,
   startJerk: 0,
   endJerk: 0,
-  profileType: 'jerk-limited',
+  segmentType: 'jerk-limited',
 });
 
 // Helper to sample a property
-function sampleProfile(profile: MotionSegment, fn: (t: number) => number): number[][] {
+function sampleSegment(segment: MotionSegment, fn: (t: number) => number): number[][] {
   const tArr: number[] = [];
   const yArr: number[] = [];
   for (let i = 0; i <= steps; i++) {
@@ -79,12 +79,12 @@ function sampleProfile(profile: MotionSegment, fn: (t: number) => number): numbe
   return [tArr, yArr];
 }
 
-// Plot all four properties for a single profile
-function plotProfileAllCurves(profile: MotionSegment, label: string) {
-  const [tDist, distArr] = sampleProfile(profile, t => profile.position(t));
-  const [tVel, velArr] = sampleProfile(profile, t => profile.velocity(t));
-  const [tAcc, accArr] = sampleProfile(profile, t => profile.acceleration(t));
-  const [tJerk, jerkArr] = sampleProfile(profile, t => profile.jerk(t));
+// Plot all four properties for a single segment
+function plotSegmentAllCurves(segment: MotionSegment, label: string) {
+  const [tDist, distArr] = sampleSegment(segment, t => segment.position(t));
+  const [tVel, velArr] = sampleSegment(segment, t => segment.velocity(t));
+  const [tAcc, accArr] = sampleSegment(segment, t => segment.acceleration(t));
+  const [tJerk, jerkArr] = sampleSegment(segment, t => segment.jerk(t));
 
   const data: any[] = [
     { x: tDist, y: distArr, type: 'scatter', mode: 'lines', name: 'Distance' },
@@ -94,24 +94,24 @@ function plotProfileAllCurves(profile: MotionSegment, label: string) {
   ];
 
   plot(data, {
-    title: `${label} Profile: Distance, Velocity, Acceleration, Jerk`,
+    title: `${label} Segment: Distance, Velocity, Acceleration, Jerk`,
     xaxis: { title: 'Time (s)' },
     yaxis: { title: 'Value' },
   });
 }
 
-// Plot for each profile type
-plotProfileAllCurves(constantProfile, 'Constant');
-plotProfileAllCurves(triangularProfile, 'Triangular');
-plotProfileAllCurves(trapezoidalProfile, 'Trapezoidal');
-plotProfileAllCurves(sCurveProfile, 'S-curve');
-plotProfileAllCurves(polynomialProfile, 'Polynomial');
-plotProfileAllCurves(jerkLimitedProfile, 'Jerk-limited');
+// Plot for each segment type
+plotSegmentAllCurves(constantSegment, 'Constant');
+plotSegmentAllCurves(triangularSegment, 'Triangular');
+plotSegmentAllCurves(trapezoidalSegment, 'Trapezoidal');
+plotSegmentAllCurves(sCurveSegment, 'S-curve');
+plotSegmentAllCurves(polynomialSegment, 'Polynomial');
+plotSegmentAllCurves(jerkLimitedSegment, 'Jerk-limited');
 
 // Still print summary values
-console.log('Constant Profile:', constantProfile.position(10), 'Max Accel:', constantProfile.getMaxAcceleration(), 'Max Jerk:', constantProfile.getMaxJerk());
-console.log('Triangular Profile:', triangularProfile.position(10), 'Max Accel:', triangularProfile.getMaxAcceleration(), 'Max Jerk:', triangularProfile.getMaxJerk());
-console.log('Trapezoidal Profile:', trapezoidalProfile.position(10), 'Max Accel:', trapezoidalProfile.getMaxAcceleration(), 'Max Jerk:', trapezoidalProfile.getMaxJerk());
-console.log('S-curve Profile:', sCurveProfile.position(10), 'Max Accel:', sCurveProfile.getMaxAcceleration(), 'Max Jerk:', sCurveProfile.getMaxJerk());
-console.log('Polynomial Profile:', polynomialProfile.position(10), 'Max Accel:', polynomialProfile.getMaxAcceleration(), 'Max Jerk:', polynomialProfile.getMaxJerk());
-console.log('Jerk-limited Profile:', jerkLimitedProfile.position(10), 'Max Accel:', jerkLimitedProfile.getMaxAcceleration(), 'Max Jerk:', jerkLimitedProfile.getMaxJerk()); 
+console.log('Constant Segment:', constantSegment.position(10), 'Max Accel:', constantSegment.getMaxAcceleration(), 'Max Jerk:', constantSegment.getMaxJerk());
+console.log('Triangular Segment:', triangularSegment.position(10), 'Max Accel:', triangularSegment.getMaxAcceleration(), 'Max Jerk:', triangularSegment.getMaxJerk());
+console.log('Trapezoidal Segment:', trapezoidalSegment.position(10), 'Max Accel:', trapezoidalSegment.getMaxAcceleration(), 'Max Jerk:', trapezoidalSegment.getMaxJerk());
+console.log('S-curve Segment:', sCurveSegment.position(10), 'Max Accel:', sCurveSegment.getMaxAcceleration(), 'Max Jerk:', sCurveSegment.getMaxJerk());
+console.log('Polynomial Segment:', polynomialSegment.position(10), 'Max Accel:', polynomialSegment.getMaxAcceleration(), 'Max Jerk:', polynomialSegment.getMaxJerk());
+console.log('Jerk-limited Segment:', jerkLimitedSegment.position(10), 'Max Accel:', jerkLimitedSegment.getMaxAcceleration(), 'Max Jerk:', jerkLimitedSegment.getMaxJerk()); 

@@ -1,7 +1,7 @@
 /**
- * Supported motion profile types.
+ * Supported motion segment types.
  */
-type ProfileType =
+type SegmentType =
     | 'constant'      // Constant acceleration
     | 'triangular'    // Symmetric acceleration/deceleration (peak at midpoint)
     | 'trapezoidal'   // Accel, cruise, decel
@@ -11,8 +11,8 @@ type ProfileType =
 
 /**
  * Options for constructing a MotionSegment.
- * @property {number} startTime - The start time of the profile.
- * @property {number} endTime - The end time of the profile.
+ * @property {number} startTime - The start time of the segment.
+ * @property {number} endTime - The end time of the segment.
  * @property {number} distance - The total distance to travel.
  * @property {number} startVelocity - The initial velocity.
  * @property {number} [endVelocity] - The final velocity (default: startVelocity).
@@ -20,8 +20,8 @@ type ProfileType =
  * @property {number} [endAccel] - The final acceleration (for jerk-limited/polynomial).
  * @property {number} [startJerk] - The initial jerk (for jerk-limited/polynomial).
  * @property {number} [endJerk] - The final jerk (for jerk-limited/polynomial).
- * @property {ProfileType} profileType - The type of motion profile.
- * @property {number[]} [polynomialCoefficients] - Coefficients for polynomial profile.
+ * @property {SegmentType} segmentType - The type of motion segment.
+ * @property {number[]} [polynomialCoefficients] - Coefficients for polynomial segment.
  * @property {number} [cruisePercentage] - The percentage (0-1) of the total time to spend in the cruise phase (for trapezoidal).
  */
 interface MotionSegmentOptions {
@@ -34,7 +34,7 @@ interface MotionSegmentOptions {
     endAccel?: number;
     startJerk?: number;
     endJerk?: number;
-    profileType: ProfileType;
+    segmentType: SegmentType;
     /**
      * The percentage (0-1) of the total time to spend in the cruise phase (for trapezoidal).
      * If provided, automatically solves for the required cruise velocity.
@@ -43,7 +43,7 @@ interface MotionSegmentOptions {
 }
 
 /**
- * MotionSegment generates position, velocity, acceleration, and jerk profiles
+ * MotionSegment generates position, velocity, acceleration, and jerk segments
  * for a variety of motion types (constant, triangular, trapezoidal, s-curve, polynomial, jerk-limited).
  */
 export class MotionSegment {
@@ -56,7 +56,7 @@ export class MotionSegment {
     private readonly af: number; // End acceleration
     private readonly j0: number; // Start jerk
     private readonly jf: number; // End jerk
-    private readonly type: ProfileType; // Profile type
+    private readonly type: SegmentType; // Segment type
     private readonly coeffs?: number[]; // Polynomial coefficients (now always auto-calculated)
     private jerkCoeffs?: number[];      // Jerk-limited coefficients
     private readonly cruisePercentage?: number; // Fraction of time for cruise phase
@@ -78,8 +78,8 @@ export class MotionSegment {
         if (typeof opts.startVelocity !== 'number' || isNaN(opts.startVelocity)) {
             throw new Error('startVelocity must be a number');
         }
-        if (!opts.profileType) {
-            throw new Error('profileType is required');
+        if (!opts.segmentType) {
+            throw new Error('segmentType is required');
         }
 
         // Check time interval
@@ -94,35 +94,35 @@ export class MotionSegment {
         if (opts.startVelocity < 0) {
             throw new Error('startVelocity must be non-negative');
         }
-        if (opts.profileType === 'constant' && opts.endVelocity !== undefined) {
-            throw new Error('endVelocity should not be provided for constant profile');
+        if (opts.segmentType === 'constant' && opts.endVelocity !== undefined) {
+            throw new Error('endVelocity should not be provided for constant segment');
         }
-        if (opts.profileType !== 'constant' && opts.endVelocity !== undefined && opts.endVelocity < 0) {
+        if (opts.segmentType !== 'constant' && opts.endVelocity !== undefined && opts.endVelocity < 0) {
             throw new Error('endVelocity must be non-negative');
         }
 
-        // Profile-specific requirements
-        switch (opts.profileType) {
+        // Segment-specific requirements
+        switch (opts.segmentType) {
             case 'jerk-limited':
                 if (opts.startAccel === undefined || opts.endAccel === undefined) {
-                    throw new Error('startAccel and endAccel are required for jerk-limited profile');
+                    throw new Error('startAccel and endAccel are required for jerk-limited segment');
                 }
                 if (opts.startJerk === undefined || opts.endJerk === undefined) {
-                    throw new Error('startJerk and endJerk are required for jerk-limited profile');
+                    throw new Error('startJerk and endJerk are required for jerk-limited segment');
                 }
                 break;
         }
 
-        if (opts.profileType === 'trapezoidal') {
+        if (opts.segmentType === 'trapezoidal') {
             if (opts.cruisePercentage !== undefined && (opts.cruisePercentage < 0 || opts.cruisePercentage > 1)) {
-                throw new Error('cruisePercentage must be between 0 and 1 for trapezoidal profiles');
+                throw new Error('cruisePercentage must be between 0 and 1 for trapezoidal segments');
             }
         }
     }
 
     /**
      * Construct a new MotionSegment.
-     * @param {MotionSegmentOptions} opts - The options for the profile.
+     * @param {MotionSegmentOptions} opts - The options for the segment.
      */
     constructor(opts: MotionSegmentOptions) {
         this.validateOptions(opts);
@@ -130,9 +130,9 @@ export class MotionSegment {
         this.t1 = opts.endTime;
         this.d = opts.distance;
         this.v0 = opts.startVelocity;
-        this.type = opts.profileType;
+        this.type = opts.segmentType;
         if (this.type === 'constant') {
-            // For constant profile, ignore endVelocity and solve for constant acceleration
+            // For constant segment, ignore endVelocity and solve for constant acceleration
             // such that the object travels distance d in time T starting from v0
             // s = v0*T + 0.5*a*T^2 => a = 2*(d - v0*T)/T^2
             this.vf = undefined as any;
@@ -210,7 +210,7 @@ export class MotionSegment {
             case 'jerk-limited':
                 return this.jerkLimitedPosition(t);
             default:
-                throw new Error('Unknown profile type');
+                throw new Error('Unknown segment type');
         }
     }
 
@@ -234,7 +234,7 @@ export class MotionSegment {
             case 'jerk-limited':
                 return this.jerkLimitedVelocity(t);
             default:
-                throw new Error('Unknown profile type');
+                throw new Error('Unknown segment type');
         }
     }
 
@@ -258,7 +258,7 @@ export class MotionSegment {
             case 'jerk-limited':
                 return this.jerkLimitedAcceleration(t);
             default:
-                throw new Error('Unknown profile type');
+                throw new Error('Unknown segment type');
         }
     }
 
@@ -281,7 +281,7 @@ export class MotionSegment {
     }
 
     /**
-     * Get the maximum absolute acceleration reached in the profile.
+     * Get the maximum absolute acceleration reached in the segment.
      * @returns {number} The maximum absolute acceleration.
      */
     public getMaxAcceleration(): number {
@@ -297,7 +297,7 @@ export class MotionSegment {
     }
 
     /**
-     * Get the maximum absolute jerk reached in the profile.
+     * Get the maximum absolute jerk reached in the segment.
      * @returns {number} The maximum absolute jerk.
      */
     public getMaxJerk(): number {
@@ -315,7 +315,7 @@ export class MotionSegment {
     // --- Constant acceleration ---
 
     /**
-     * Position for constant acceleration profile.
+     * Position for constant acceleration segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The position at time t.
@@ -323,37 +323,37 @@ export class MotionSegment {
     private constantPosition(t: number): number {
         let dt = this.clampDt(t);
         const T = this.t1 - this.t0;
-        // Use the solved a0 for constant profile
+        // Use the solved a0 for constant segment
         return this.v0 * dt + 0.5 * this.a0 * dt * dt;
     }
 
     /**
-     * Velocity for constant acceleration profile.
+     * Velocity for constant acceleration segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The velocity at time t.
      */
     private constantVelocity(t: number): number {
         let dt = this.clampDt(t);
-        // Use the solved a0 for constant profile
+        // Use the solved a0 for constant segment
         return this.v0 + this.a0 * dt;
     }
 
     /**
-     * Acceleration for constant acceleration profile.
+     * Acceleration for constant acceleration segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The acceleration at time t.
      */
     private constantAcceleration(t: number): number {
-        // Use the solved a0 for constant profile
+        // Use the solved a0 for constant segment
         return this.a0;
     }
 
-    // --- Triangular profile (symmetric accel-decel, peak at midpoint) ---
+    // --- Triangular segment (symmetric accel-decel, peak at midpoint) ---
 
     /**
-     * Calculate parameters for a symmetric triangular profile.
+     * Calculate parameters for a symmetric triangular segment.
      * @private
      * @returns {{a: number, t1: number, vPeak: number}} The acceleration, midpoint time, and peak velocity.
      */
@@ -367,7 +367,7 @@ export class MotionSegment {
     }
 
     /**
-     * Position for triangular profile.
+     * Position for triangular segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The position at time t.
@@ -386,7 +386,7 @@ export class MotionSegment {
     }
 
     /**
-     * Velocity for triangular profile.
+     * Velocity for triangular segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The velocity at time t.
@@ -404,7 +404,7 @@ export class MotionSegment {
     }
 
     /**
-     * Acceleration for triangular profile.
+     * Acceleration for triangular segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The acceleration at time t.
@@ -415,10 +415,10 @@ export class MotionSegment {
         return dt < t1 ? a : -a;
     }
 
-    // --- Trapezoidal profile (accel, cruise, decel) ---
+    // --- Trapezoidal segment (accel, cruise, decel) ---
 
     /**
-     * Calculate parameters for a trapezoidal profile.
+     * Calculate parameters for a trapezoidal segment.
      * If cruisePercentage is provided, use it to set the cruise phase duration and solve for vMax.
      * Otherwise, solve for the minimum required value.
      * @private
@@ -451,7 +451,7 @@ export class MotionSegment {
         const d2 = d - d1 - d3;
         let t2 = d2 / vMax_min;
         if (t2 < 0) {
-            // Triangular profile: peak velocity is less than vMax_min, no cruise
+            // Triangular segment: peak velocity is less than vMax_min, no cruise
             const vPeak = vMax_min;
             const t1_tri = T / 2;
             const t3_tri = T / 2;
@@ -460,13 +460,13 @@ export class MotionSegment {
             const a3_tri = (vf - vPeak) / t3_tri;
             return { vMax: vPeak, t1: t1_tri, t2: t2_tri, t3: t3_tri, a1: a1_tri, a3: a3_tri };
         } else {
-            // Trapezoidal profile with cruise
+            // Trapezoidal segment with cruise
             return { vMax: vMax_min, t1, t2, t3, a1, a3 };
         }
     }
 
     /**
-     * Position for trapezoidal profile.
+     * Position for trapezoidal segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The position at time t.
@@ -489,7 +489,7 @@ export class MotionSegment {
     }
 
     /**
-     * Velocity for trapezoidal profile.
+     * Velocity for trapezoidal segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The velocity at time t.
@@ -508,7 +508,7 @@ export class MotionSegment {
     }
 
     /**
-     * Acceleration for trapezoidal profile.
+     * Acceleration for trapezoidal segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The acceleration at time t.
@@ -524,7 +524,7 @@ export class MotionSegment {
     // --- Cubic S-curve (position: 3x^2 - 2x^3) ---
 
     /**
-     * Position for cubic S-curve profile.
+     * Position for cubic S-curve segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The position at time t.
@@ -537,7 +537,7 @@ export class MotionSegment {
     }
 
     /**
-     * Velocity for cubic S-curve profile.
+     * Velocity for cubic S-curve segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The velocity at time t.
@@ -551,7 +551,7 @@ export class MotionSegment {
     }
 
     /**
-     * Acceleration for cubic S-curve profile.
+     * Acceleration for cubic S-curve segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The acceleration at time t.
@@ -565,7 +565,7 @@ export class MotionSegment {
     }
 
     /**
-     * Jerk for cubic S-curve profile.
+     * Jerk for cubic S-curve segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The jerk at time t.
@@ -576,10 +576,10 @@ export class MotionSegment {
         return -12 * d / (T * T * T);
     }
 
-    // --- Polynomial profile (arbitrary coefficients, highest flexibility) ---
+    // --- Polynomial segment (arbitrary coefficients, highest flexibility) ---
 
     /**
-     * Position for polynomial profile.
+     * Position for polynomial segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The position at time t.
@@ -592,7 +592,7 @@ export class MotionSegment {
     }
 
     /**
-     * Velocity for polynomial profile.
+     * Velocity for polynomial segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The velocity at time t.
@@ -605,7 +605,7 @@ export class MotionSegment {
     }
 
     /**
-     * Acceleration for polynomial profile.
+     * Acceleration for polynomial segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The acceleration at time t.
@@ -618,7 +618,7 @@ export class MotionSegment {
     }
 
     /**
-     * Jerk for polynomial profile.
+     * Jerk for polynomial segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The jerk at time t.
@@ -633,7 +633,7 @@ export class MotionSegment {
     // --- Jerk-limited S-curve (arbitrary v/a/j at endpoints) ---
 
     /**
-     * Calculate coefficients for jerk-limited S-curve profile.
+     * Calculate coefficients for jerk-limited S-curve segment.
      * @private
      * @returns {number[]} The coefficients for the 7th-order polynomial.
      */
@@ -691,7 +691,7 @@ export class MotionSegment {
     }
 
     /**
-     * Position for jerk-limited profile.
+     * Position for jerk-limited segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The position at time t.
@@ -703,7 +703,7 @@ export class MotionSegment {
     }
 
     /**
-     * Velocity for jerk-limited profile.
+     * Velocity for jerk-limited segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The velocity at time t.
@@ -715,7 +715,7 @@ export class MotionSegment {
     }
 
     /**
-     * Acceleration for jerk-limited profile.
+     * Acceleration for jerk-limited segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The acceleration at time t.
@@ -727,7 +727,7 @@ export class MotionSegment {
     }
 
     /**
-     * Jerk for jerk-limited profile.
+     * Jerk for jerk-limited segment.
      * @private
      * @param {number} t - The time.
      * @returns {number} The jerk at time t.
@@ -741,7 +741,7 @@ export class MotionSegment {
     // --- Helpers ---
 
     /**
-     * Clamp time to the profile interval and return delta time from t0.
+     * Clamp time to the segment interval and return delta time from t0.
      * @private
      * @param {number} t - The time.
      * @returns {number} The clamped delta time.
@@ -753,7 +753,7 @@ export class MotionSegment {
     }
 
     /**
-     * Normalize time to [0, 1] over the profile interval.
+     * Normalize time to [0, 1] over the segment interval.
      * @private
      * @param {number} t - The time.
      * @returns {number} Normalized time in [0, 1].

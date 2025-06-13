@@ -10,22 +10,22 @@ describe('MotionSegment', () => {
   const endTime = 10;
   const distance = 100;
 
-  describe('constant profile', () => {
+  describe('constant segment', () => {
     it('computes correct position, velocity, acceleration', () => {
-      const profile = new MotionSegment({
+      const segment = new MotionSegment({
         startTime,
         endTime,
         distance,
         startVelocity: 0,
-        profileType: 'constant',
+        segmentType: 'constant',
       });
-      expect(closeTo(profile.position(0), 0)).toBe(true);
-      expect(closeTo(profile.position(10), 100)).toBe(true);
-      expect(closeTo(profile.velocity(0), 0)).toBe(true);
-      expect(closeTo(profile.velocity(10), 20)).toBe(true);
-      expect(closeTo(profile.acceleration(0), 2)).toBe(true);
-      expect(closeTo(profile.acceleration(10), 2)).toBe(true);
-      expect(closeTo(profile.jerk(0), 0)).toBe(true);
+      expect(closeTo(segment.position(0), 0)).toBe(true);
+      expect(closeTo(segment.position(10), 100)).toBe(true);
+      expect(closeTo(segment.velocity(0), 0)).toBe(true);
+      expect(closeTo(segment.velocity(10), 20)).toBe(true);
+      expect(closeTo(segment.acceleration(0), 2)).toBe(true);
+      expect(closeTo(segment.acceleration(10), 2)).toBe(true);
+      expect(closeTo(segment.jerk(0), 0)).toBe(true);
     });
     it('throws if endVelocity is provided', () => {
       expect(() => new MotionSegment({
@@ -34,53 +34,53 @@ describe('MotionSegment', () => {
         distance,
         startVelocity: 0,
         endVelocity: 0,
-        profileType: 'constant',
+        segmentType: 'constant',
       })).toThrow();
     });
   });
 
-  describe('triangular profile', () => {
+  describe('triangular segment', () => {
     it('computes correct position, velocity, acceleration', () => {
-      const profile = new MotionSegment({
+      const segment = new MotionSegment({
         startTime,
         endTime,
         distance,
         startVelocity: 0,
         endVelocity: 0,
-        profileType: 'triangular',
+        segmentType: 'triangular',
       });
-      expect(closeTo(profile.position(0), 0)).toBe(true);
-      expect(closeTo(profile.position(10), 100)).toBe(true);
-      expect(closeTo(profile.velocity(0), 0)).toBe(true);
-      expect(closeTo(profile.velocity(5), 10)).toBe(true);
-      expect(closeTo(profile.velocity(10), 0)).toBe(true);
-      expect(closeTo(profile.acceleration(0), 2)).toBe(true);
-      expect(closeTo(profile.acceleration(5), -2)).toBe(true);
-      expect(closeTo(profile.jerk(0), 0)).toBe(true);
+      expect(closeTo(segment.position(0), 0)).toBe(true);
+      expect(closeTo(segment.position(10), 100)).toBe(true);
+      expect(closeTo(segment.velocity(0), 0)).toBe(true);
+      expect(closeTo(segment.velocity(5), 10)).toBe(true);
+      expect(closeTo(segment.velocity(10), 0)).toBe(true);
+      expect(closeTo(segment.acceleration(0), 2)).toBe(true);
+      expect(closeTo(segment.acceleration(5), -2)).toBe(true);
+      expect(closeTo(segment.jerk(0), 0)).toBe(true);
     });
   });
 
-  describe('trapezoidal profile', () => {
+  describe('trapezoidal segment', () => {
     it('computes correct position, velocity, acceleration, cruisePercentage', () => {
-      const profile = new MotionSegment({
+      const segment = new MotionSegment({
         startTime,
         endTime,
         distance,
         startVelocity: 0,
         endVelocity: 0,
-        profileType: 'trapezoidal',
+        segmentType: 'trapezoidal',
         cruisePercentage: 1/3,
       });
-      expect(closeTo(profile.position(0), 0)).toBe(true);
-      expect(closeTo(profile.position(10), 100)).toBe(true);
+      expect(closeTo(segment.position(0), 0)).toBe(true);
+      expect(closeTo(segment.position(10), 100)).toBe(true);
       // At t1 (end of accel):
       const t1 = (endTime - startTime) * (1 - 1/3) / 2;
-      expect(closeTo(profile.velocity(t1), profile['trapezoidalParams']().vMax)).toBe(true);
+      expect(closeTo(segment.velocity(t1), segment['trapezoidalParams']().vMax)).toBe(true);
       // At t2 (end of cruise):
       const t2 = t1 + (endTime - startTime) * (1/3);
-      expect(closeTo(profile.velocity(t2), profile['trapezoidalParams']().vMax)).toBe(true);
+      expect(closeTo(segment.velocity(t2), segment['trapezoidalParams']().vMax)).toBe(true);
       // At t3 (end):
-      expect(closeTo(profile.velocity(10), 0)).toBe(true);
+      expect(closeTo(segment.velocity(10), 0)).toBe(true);
     });
     it('throws if cruisePercentage is out of bounds', () => {
       expect(() => new MotionSegment({
@@ -89,7 +89,7 @@ describe('MotionSegment', () => {
         distance,
         startVelocity: 0,
         endVelocity: 0,
-        profileType: 'trapezoidal',
+        segmentType: 'trapezoidal',
         cruisePercentage: -0.1,
       })).toThrow();
       expect(() => new MotionSegment({
@@ -98,46 +98,46 @@ describe('MotionSegment', () => {
         distance,
         startVelocity: 0,
         endVelocity: 0,
-        profileType: 'trapezoidal',
+        segmentType: 'trapezoidal',
         cruisePercentage: 1.1,
       })).toThrow();
     });
   });
 
-  describe('s-curve profile', () => {
+  describe('s-curve segment', () => {
     it('computes position, velocity, acceleration, jerk', () => {
-      const profile = new MotionSegment({
+      const segment = new MotionSegment({
         startTime,
         endTime,
         distance,
         startVelocity: 0,
         endVelocity: 0,
-        profileType: 's-curve',
+        segmentType: 's-curve',
       });
-      expect(closeTo(profile.position(0), 0)).toBe(true);
-      expect(closeTo(profile.position(10), 100)).toBe(true);
-      expect(closeTo(profile.velocity(0), 0)).toBe(true);
-      expect(closeTo(profile.velocity(10), 0)).toBe(true);
-      expect(closeTo(profile.acceleration(0), 6 * distance / 100)).toBe(true); // 6d/T^2
-      expect(closeTo(profile.jerk(0), -0.12)).toBe(true); // -12d/T^3
+      expect(closeTo(segment.position(0), 0)).toBe(true);
+      expect(closeTo(segment.position(10), 100)).toBe(true);
+      expect(closeTo(segment.velocity(0), 0)).toBe(true);
+      expect(closeTo(segment.velocity(10), 0)).toBe(true);
+      expect(closeTo(segment.acceleration(0), 6 * distance / 100)).toBe(true); // 6d/T^2
+      expect(closeTo(segment.jerk(0), -0.12)).toBe(true); // -12d/T^3
     });
   });
 
-  describe('polynomial profile', () => {
+  describe('polynomial segment', () => {
     it('computes position, velocity, acceleration, jerk', () => {
-      const profile = new MotionSegment({
+      const segment = new MotionSegment({
         startTime,
         endTime,
         distance: 100,
         startVelocity: 0,
         endVelocity: 0,
-        profileType: 'polynomial',
+        segmentType: 'polynomial',
       });
-      expect(closeTo(profile.position(0), 0)).toBe(true);
-      expect(closeTo(profile.position(10), 100)).toBe(true);
-      expect(closeTo(profile.velocity(10), 0)).toBe(true);
-      expect(closeTo(profile.acceleration(10), 0)).toBe(true);
-      expect(closeTo(profile.jerk(10), 0)).toBe(true);
+      expect(closeTo(segment.position(0), 0)).toBe(true);
+      expect(closeTo(segment.position(10), 100)).toBe(true);
+      expect(closeTo(segment.velocity(10), 0)).toBe(true);
+      expect(closeTo(segment.acceleration(10), 0)).toBe(true);
+      expect(closeTo(segment.jerk(10), 0)).toBe(true);
     });
     it('throws if coefficients are missing', () => {
       // This test is no longer needed, as coefficients are always auto-generated
@@ -145,9 +145,9 @@ describe('MotionSegment', () => {
     });
   });
 
-  describe('jerk-limited profile', () => {
+  describe('jerk-limited segment', () => {
     it('computes position, velocity, acceleration, jerk', () => {
-      const profile = new MotionSegment({
+      const segment = new MotionSegment({
         startTime,
         endTime,
         distance,
@@ -157,13 +157,13 @@ describe('MotionSegment', () => {
         endAccel: 0,
         startJerk: 0,
         endJerk: 0,
-        profileType: 'jerk-limited',
+        segmentType: 'jerk-limited',
       });
-      expect(closeTo(profile.position(0), 0)).toBe(true);
-      expect(closeTo(profile.position(10), 100)).toBe(true);
-      expect(typeof profile.velocity(5)).toBe('number');
-      expect(typeof profile.acceleration(5)).toBe('number');
-      expect(typeof profile.jerk(5)).toBe('number');
+      expect(closeTo(segment.position(0), 0)).toBe(true);
+      expect(closeTo(segment.position(10), 100)).toBe(true);
+      expect(typeof segment.velocity(5)).toBe('number');
+      expect(typeof segment.acceleration(5)).toBe('number');
+      expect(typeof segment.jerk(5)).toBe('number');
     });
     it('throws if required parameters are missing', () => {
       expect(() => new MotionSegment({
@@ -172,7 +172,7 @@ describe('MotionSegment', () => {
         distance,
         startVelocity: 0,
         endVelocity: 0,
-        profileType: 'jerk-limited',
+        segmentType: 'jerk-limited',
       })).toThrow();
     });
   });
@@ -184,14 +184,14 @@ describe('MotionSegment', () => {
         endTime,
         distance: -1,
         startVelocity: 0,
-        profileType: 'constant',
+        segmentType: 'constant',
       })).toThrow();
       expect(() => new MotionSegment({
         startTime,
         endTime,
         distance,
         startVelocity: -1,
-        profileType: 'constant',
+        segmentType: 'constant',
       })).toThrow();
     });
     it('throws for invalid time interval', () => {
@@ -200,10 +200,10 @@ describe('MotionSegment', () => {
         endTime: 0,
         distance,
         startVelocity: 0,
-        profileType: 'constant',
+        segmentType: 'constant',
       })).toThrow();
     });
-    it('throws for missing profileType', () => {
+    it('throws for missing segmentType', () => {
       // @ts-expect-error
       expect(() => new MotionSegment({
         startTime,
