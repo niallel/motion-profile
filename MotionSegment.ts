@@ -68,6 +68,13 @@ export class MotionSegment {
      * @param {MotionSegmentOptions} opts - The options to validate.
      */
     private validateOptions(opts: MotionSegmentOptions): void {
+        // General check for NaN/Infinity in all numeric parameters
+        for (const [key, value] of Object.entries(opts)) {
+            if (typeof value === 'number' && !isFinite(value)) {
+                throw new Error(`All numeric parameters must be finite (not NaN or Infinity): ${key}`);
+            }
+        }
+
         // Check required fields
         if (typeof opts.startTime !== 'number' || typeof opts.endTime !== 'number') {
             throw new Error('startTime and endTime must be numbers');
@@ -103,6 +110,28 @@ export class MotionSegment {
 
         // Segment-specific requirements
         switch (opts.segmentType) {
+            case 'triangular':
+                if (opts.endVelocity === undefined || typeof opts.endVelocity !== 'number' || isNaN(opts.endVelocity)) {
+                    throw new Error('endVelocity must be a number for triangular segment');
+                }
+                if (opts.endVelocity < 0) {
+                    throw new Error('endVelocity must be non-negative');
+                }
+                const T_tri = opts.endTime - opts.startTime;
+                if (T_tri <= 0) {
+                    throw new Error('Duration must be positive for triangular segment');
+                }
+                const v0_tri = opts.startVelocity;
+                const vf_tri = opts.endVelocity;
+                const d_tri = opts.distance;
+                const vPeak = (2 * d_tri) / T_tri;
+                const t1 = T_tri / 2;
+                const a = vPeak / t1;
+                const EPS = 1e-6;
+                if (!isFinite(a) || a <= EPS || !isFinite(vPeak) || vPeak < EPS || t1 < EPS) {
+                    throw new Error('Parameters are not feasible for triangular segment (check distance, duration, velocities)');
+                }
+                break;
             case 'jerk-limited':
                 if (opts.startAccel === undefined || opts.endAccel === undefined) {
                     throw new Error('startAccel and endAccel are required for jerk-limited segment');
@@ -110,12 +139,88 @@ export class MotionSegment {
                 if (opts.startJerk === undefined || opts.endJerk === undefined) {
                     throw new Error('startJerk and endJerk are required for jerk-limited segment');
                 }
+                if (
+                    typeof opts.startAccel !== 'number' || !isFinite(opts.startAccel) || opts.startAccel < 0 ||
+                    typeof opts.endAccel !== 'number' || !isFinite(opts.endAccel) || opts.endAccel < 0
+                ) {
+                    throw new Error('startAccel and endAccel must be non-negative finite numbers for jerk-limited segment');
+                }
+                if (
+                    typeof opts.startJerk !== 'number' || !isFinite(opts.startJerk) || opts.startJerk < 0 ||
+                    typeof opts.endJerk !== 'number' || !isFinite(opts.endJerk) || opts.endJerk < 0
+                ) {
+                    throw new Error('startJerk and endJerk must be non-negative finite numbers for jerk-limited segment');
+                }
+                // Unreasonably large
+                const MAX = 1e6;
+                if (
+                    Math.abs(opts.startAccel) > MAX || Math.abs(opts.endAccel) > MAX ||
+                    Math.abs(opts.startJerk) > MAX || Math.abs(opts.endJerk) > MAX
+                ) {
+                    throw new Error('Jerk-limited segment parameters are unreasonably large');
+                }
                 break;
         }
 
         if (opts.segmentType === 'trapezoidal') {
-            if (opts.cruisePercentage !== undefined && (opts.cruisePercentage < 0 || opts.cruisePercentage > 1)) {
-                throw new Error('cruisePercentage must be between 0 and 1 for trapezoidal segments');
+            if (opts.cruisePercentage !== undefined) {
+                if (typeof opts.cruisePercentage !== 'number' || isNaN(opts.cruisePercentage)) {
+                    throw new Error('cruisePercentage must be a number for trapezoidal segments');
+                }
+                if (opts.cruisePercentage <= 0 || opts.cruisePercentage >= 1) {
+                    throw new Error('cruisePercentage must be between 0 and 1 for trapezoidal segments');
+                }
+            }
+            try {
+                const T = opts.endTime - opts.startTime;
+                const v0 = opts.startVelocity;
+                const vf = opts.endVelocity ?? opts.startVelocity;
+                const d = opts.distance;
+                let cruisePercentage = opts.cruisePercentage;
+                const EPS = 1e-6;
+                if (cruisePercentage !== undefined) {
+                    cruisePercentage = Math.max(0, Math.min(1, cruisePercentage));
+                    const t2 = cruisePercentage * T;
+                    const t1 = (T - t2) / 2;
+                    const t3 = (T - t2) / 2;
+                    const vMax = (d - (t1 / 2) * v0 - (t3 / 2) * vf) / ((t1 / 2) + t2 + (t3 / 2));
+                    const a1 = (vMax - v0) / t1;
+                    const a3 = (vf - vMax) / t3;
+                    if (d < EPS) throw new Error('Parameters are not feasible for trapezoidal segment (distance too small)');
+                    if (!isFinite(vMax) || vMax <= 0 || Math.abs(vMax) > 1e6) throw new Error('Parameters are not feasible for trapezoidal segment (vMax not positive or unreasonably large)');
+                    if (!isFinite(a1) || !isFinite(a3) || Math.abs(a1) > 1e6 || Math.abs(a3) > 1e6) throw new Error('Parameters are not feasible for trapezoidal segment (acceleration not finite or unreasonably large)');
+                    if (t1 < EPS || t2 < 0 || t3 < EPS) throw new Error('Parameters are not feasible for trapezoidal segment (phase duration too small or negative)');
+                    // Stricter realism check
+                    const minFrac = 0.05 * T;
+                    if (t1 < minFrac || t2 < minFrac || t3 < minFrac) throw new Error('Parameters are not physically realistic for trapezoidal segment (phase duration too short relative to total duration)');
+                    if (Math.abs(vMax) > 100 || Math.abs(a1) > 100 || Math.abs(a3) > 100) throw new Error('Parameters are not physically realistic for trapezoidal segment (velocity or acceleration too high)');
+                    // Final check: sum of phase distances must match requested distance
+                    const d1 = (v0 + vMax) * t1 / 2;
+                    const d2 = vMax * t2;
+                    const d3 = (vf + vMax) * t3 / 2;
+                    if (Math.abs(d1 + d2 + d3 - d) > EPS) throw new Error('Parameters are not feasible for trapezoidal segment (distance mismatch)');
+                } else {
+                    const vMax_min = 2 * (d - (T / 4) * (v0 + vf)) / T;
+                    const a1 = (vMax_min - v0) / (T / 2);
+                    const a3 = (vf - vMax_min) / (T / 2);
+                    const t1 = (vMax_min - v0) / a1;
+                    const t3 = (vMax_min - vf) / Math.abs(a3);
+                    const d1 = (v0 + vMax_min) * t1 / 2;
+                    const d3 = (vf + vMax_min) * t3 / 2;
+                    const d2 = d - d1 - d3;
+                    let t2 = d2 / vMax_min;
+                    if (d < EPS) throw new Error('Parameters are not feasible for trapezoidal segment (distance too small)');
+                    if (!isFinite(vMax_min) || !isFinite(a1) || !isFinite(a3) || vMax_min <= 0 || Math.abs(vMax_min) > 1e6) throw new Error('Parameters are not feasible for trapezoidal segment (non-positive or unreasonably large values)');
+                    if (t1 < EPS || t2 < 0 || t3 < EPS) throw new Error('Parameters are not feasible for trapezoidal segment (phase duration too small or negative)');
+                    // Stricter realism check
+                    const minFrac = 0.05 * T;
+                    if (t1 < minFrac || t2 < minFrac || t3 < minFrac) throw new Error('Parameters are not physically realistic for trapezoidal segment (phase duration too short relative to total duration)');
+                    if (Math.abs(vMax_min) > 100 || Math.abs(a1) > 100 || Math.abs(a3) > 100) throw new Error('Parameters are not physically realistic for trapezoidal segment (velocity or acceleration too high)');
+                    // Final check: sum of phase distances must match requested distance
+                    if (Math.abs(d1 + d2 + d3 - d) > EPS) throw new Error('Parameters are not feasible for trapezoidal segment (distance mismatch)');
+                }
+            } catch (e) {
+                throw new Error('Parameters are not feasible for trapezoidal segment (check distance, duration, velocities, cruisePercentage)');
             }
         }
     }
