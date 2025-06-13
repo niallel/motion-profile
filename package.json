@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
-    "example": "npx tsx exampleSegments.ts",
+    "example": "npx tsx exampleSegments.ts"
   },
   "author": "Niall El-Assaad",
   "license": "ISC",
